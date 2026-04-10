@@ -1,6 +1,7 @@
 import ArgumentParser
 import Domain
 import Foundation
+import Infrastructure
 
 struct SubmitCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -17,17 +18,72 @@ struct SubmitPreflightCommand: AsyncParsableCommand {
     )
 
     @OptionGroup var globals: GlobalOptions
-    @Option(name: .long, help: "App Store Connect app ID") var app: String
+    @Option(name: .long, help: "App Store Connect app ID") var app: String?
     @Option(name: .long, help: "App Store version string") var version: String?
+    @Option(name: .long, help: "App Store version ID") var versionId: String?
     @Option(name: .long, help: "Platform") var platform: String?
 
-    func run() throws {
-        print(try execute())
+    func run() async throws {
+        let versionRepo = try ClientProvider.makeVersionRepository()
+        let appRepo = try ClientProvider.makeAppRepository()
+        let buildRepo = try ClientProvider.makeBuildRepository()
+        let reviewDetailRepo = try ClientProvider.makeReviewDetailRepository()
+        let localizationRepo = try ClientProvider.makeVersionLocalizationRepository()
+        let screenshotRepo = try ClientProvider.makeScreenshotRepository()
+        let pricingRepo = try ClientProvider.makePricingRepository()
+        let projectStorage = FileProjectConfigStorage()
+
+        print(try await execute(
+            versionRepo: versionRepo,
+            appRepo: appRepo,
+            buildRepo: buildRepo,
+            reviewDetailRepo: reviewDetailRepo,
+            localizationRepo: localizationRepo,
+            screenshotRepo: screenshotRepo,
+            pricingRepo: pricingRepo,
+            projectStorage: projectStorage
+        ))
     }
 
-    func execute() throws -> String {
+    func execute(
+        versionRepo: any VersionRepository,
+        appRepo: any AppRepository,
+        buildRepo: any BuildRepository,
+        reviewDetailRepo: any ReviewDetailRepository,
+        localizationRepo: any VersionLocalizationRepository,
+        screenshotRepo: any ScreenshotRepository,
+        pricingRepo: any PricingRepository,
+        projectStorage: any ProjectConfigStorage
+    ) async throws -> String {
+        let service = SubmissionReadinessService()
+        let result = try await service.resolveAndBuild(
+            app: app,
+            version: version,
+            versionId: versionId,
+            platform: platform,
+            versionRepo: versionRepo,
+            appRepo: appRepo,
+            buildRepo: buildRepo,
+            reviewDetailRepo: reviewDetailRepo,
+            localizationRepo: localizationRepo,
+            screenshotRepo: screenshotRepo,
+            pricingRepo: pricingRepo,
+            projectStorage: projectStorage
+        )
+
         let formatter = OutputFormatter(format: globals.outputFormat, pretty: globals.pretty)
-        return try formatter.format(SubmitEnvelope(command: "submit preflight", appId: app, versionId: nil, submissionId: nil, version: version, platform: platform, status: "not_implemented_yet"))
+        return try formatter.format(SubmitEnvelope(
+            command: "submit preflight",
+            appId: result.readiness.appId,
+            versionId: result.version.id,
+            submissionId: nil,
+            version: result.version.versionString,
+            platform: result.version.platform.rawValue,
+            status: result.readiness.isReadyToSubmit ? "ready" : "not_ready",
+            resolvedVersionId: result.version.id,
+            readinessStatus: result.readiness.isReadyToSubmit ? "ready" : "not_ready",
+            isReadyToSubmit: result.readiness.isReadyToSubmit
+        ))
     }
 }
 
@@ -49,7 +105,7 @@ struct SubmitCreateCommand: AsyncParsableCommand {
 
     func execute() throws -> String {
         let formatter = OutputFormatter(format: globals.outputFormat, pretty: globals.pretty)
-        return try formatter.format(SubmitEnvelope(command: "submit create", appId: app, versionId: nil, submissionId: nil, version: version, platform: nil, status: confirm ? "accepted_not_implemented" : "missing_confirm"))
+        return try formatter.format(SubmitEnvelope(command: "submit create", appId: app, versionId: nil, submissionId: nil, version: version, platform: nil, status: confirm ? "accepted_not_implemented" : "missing_confirm", resolvedVersionId: nil, readinessStatus: nil, isReadyToSubmit: nil))
     }
 }
 
@@ -72,7 +128,7 @@ struct SubmitStatusCommand: AsyncParsableCommand {
             throw ValidationError("Provide --id or --version-id")
         }
         let formatter = OutputFormatter(format: globals.outputFormat, pretty: globals.pretty)
-        return try formatter.format(SubmitEnvelope(command: "submit status", appId: nil, versionId: versionId, submissionId: id, version: nil, platform: nil, status: "not_implemented_yet"))
+        return try formatter.format(SubmitEnvelope(command: "submit status", appId: nil, versionId: versionId, submissionId: id, version: nil, platform: nil, status: "not_implemented_yet", resolvedVersionId: nil, readinessStatus: nil, isReadyToSubmit: nil))
     }
 }
 
@@ -96,7 +152,7 @@ struct SubmitCancelCommand: AsyncParsableCommand {
             throw ValidationError("Provide --id or --version-id")
         }
         let formatter = OutputFormatter(format: globals.outputFormat, pretty: globals.pretty)
-        return try formatter.format(SubmitEnvelope(command: "submit cancel", appId: nil, versionId: versionId, submissionId: id, version: nil, platform: nil, status: confirm ? "accepted_not_implemented" : "missing_confirm"))
+        return try formatter.format(SubmitEnvelope(command: "submit cancel", appId: nil, versionId: versionId, submissionId: id, version: nil, platform: nil, status: confirm ? "accepted_not_implemented" : "missing_confirm", resolvedVersionId: nil, readinessStatus: nil, isReadyToSubmit: nil))
     }
 }
 
@@ -108,4 +164,7 @@ private struct SubmitEnvelope: Encodable {
     let version: String?
     let platform: String?
     let status: String
+    let resolvedVersionId: String?
+    let readinessStatus: String?
+    let isReadyToSubmit: Bool?
 }

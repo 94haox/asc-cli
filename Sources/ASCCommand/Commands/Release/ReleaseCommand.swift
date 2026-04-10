@@ -1,6 +1,7 @@
 import ArgumentParser
 import Domain
 import Foundation
+import Infrastructure
 
 struct ReleaseCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -27,14 +28,69 @@ struct ReleaseStageCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Build ID")
     var build: String
 
+    @Option(name: .long, help: "Platform")
+    var platform: String?
+
     @Flag(name: .long, help: "Preview execution without side effects")
     var dryRun: Bool = false
 
-    func run() throws {
-        print(try execute())
+    func run() async throws {
+        let versionRepo = try ClientProvider.makeVersionRepository()
+        let appRepo = try ClientProvider.makeAppRepository()
+        let buildRepo = try ClientProvider.makeBuildRepository()
+        let reviewDetailRepo = try ClientProvider.makeReviewDetailRepository()
+        let localizationRepo = try ClientProvider.makeVersionLocalizationRepository()
+        let screenshotRepo = try ClientProvider.makeScreenshotRepository()
+        let pricingRepo = try ClientProvider.makePricingRepository()
+        let projectStorage = FileProjectConfigStorage()
+
+        print(try await execute(
+            versionRepo: versionRepo,
+            appRepo: appRepo,
+            buildRepo: buildRepo,
+            reviewDetailRepo: reviewDetailRepo,
+            localizationRepo: localizationRepo,
+            screenshotRepo: screenshotRepo,
+            pricingRepo: pricingRepo,
+            projectStorage: projectStorage
+        ))
     }
 
-    func execute() throws -> String {
+    func execute(
+        versionRepo: any VersionRepository,
+        appRepo: any AppRepository,
+        buildRepo: any BuildRepository,
+        reviewDetailRepo: any ReviewDetailRepository,
+        localizationRepo: any VersionLocalizationRepository,
+        screenshotRepo: any ScreenshotRepository,
+        pricingRepo: any PricingRepository,
+        projectStorage: any ProjectConfigStorage
+    ) async throws -> String {
+        let service = SubmissionReadinessService()
+        let result = try await service.resolveAndBuild(
+            app: app,
+            version: version,
+            versionId: nil,
+            platform: platform,
+            versionRepo: versionRepo,
+            appRepo: appRepo,
+            buildRepo: buildRepo,
+            reviewDetailRepo: reviewDetailRepo,
+            localizationRepo: localizationRepo,
+            screenshotRepo: screenshotRepo,
+            pricingRepo: pricingRepo,
+            projectStorage: projectStorage
+        )
+
+        let status: String
+        if !result.readiness.isReadyToSubmit {
+            status = "blocked_not_ready"
+        } else if dryRun {
+            status = "dry_run"
+        } else {
+            status = "staged_not_implemented"
+        }
+
         let formatter = OutputFormatter(format: globals.outputFormat, pretty: globals.pretty)
         return try formatter.format(ReleaseEnvelope(
             command: "release stage",
@@ -44,7 +100,9 @@ struct ReleaseStageCommand: AsyncParsableCommand {
             dryRun: dryRun,
             submit: false,
             steps: ["ensureVersion", "applyMetadata", "attachBuild", "validateReadiness"],
-            status: "not_implemented_yet"
+            status: status,
+            resolvedVersionId: result.version.id,
+            readinessStatus: result.readiness.isReadyToSubmit ? "ready" : "not_ready"
         ))
     }
 }
@@ -66,6 +124,9 @@ struct ReleaseRunCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Build ID")
     var build: String
 
+    @Option(name: .long, help: "Platform")
+    var platform: String?
+
     @Flag(name: .long, help: "Submit after staging")
     var submit: Bool = false
 
@@ -75,14 +136,68 @@ struct ReleaseRunCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Preview execution without side effects")
     var dryRun: Bool = false
 
-    func run() throws {
-        print(try execute())
+    func run() async throws {
+        let versionRepo = try ClientProvider.makeVersionRepository()
+        let appRepo = try ClientProvider.makeAppRepository()
+        let buildRepo = try ClientProvider.makeBuildRepository()
+        let reviewDetailRepo = try ClientProvider.makeReviewDetailRepository()
+        let localizationRepo = try ClientProvider.makeVersionLocalizationRepository()
+        let screenshotRepo = try ClientProvider.makeScreenshotRepository()
+        let pricingRepo = try ClientProvider.makePricingRepository()
+        let projectStorage = FileProjectConfigStorage()
+
+        print(try await execute(
+            versionRepo: versionRepo,
+            appRepo: appRepo,
+            buildRepo: buildRepo,
+            reviewDetailRepo: reviewDetailRepo,
+            localizationRepo: localizationRepo,
+            screenshotRepo: screenshotRepo,
+            pricingRepo: pricingRepo,
+            projectStorage: projectStorage
+        ))
     }
 
-    func execute() throws -> String {
-        let formatter = OutputFormatter(format: globals.outputFormat, pretty: globals.pretty)
-        let status: String = if dryRun { "dry_run" } else if submit, !confirm { "missing_confirm" } else { "not_implemented_yet" }
+    func execute(
+        versionRepo: any VersionRepository,
+        appRepo: any AppRepository,
+        buildRepo: any BuildRepository,
+        reviewDetailRepo: any ReviewDetailRepository,
+        localizationRepo: any VersionLocalizationRepository,
+        screenshotRepo: any ScreenshotRepository,
+        pricingRepo: any PricingRepository,
+        projectStorage: any ProjectConfigStorage
+    ) async throws -> String {
+        let service = SubmissionReadinessService()
+        let result = try await service.resolveAndBuild(
+            app: app,
+            version: version,
+            versionId: nil,
+            platform: platform,
+            versionRepo: versionRepo,
+            appRepo: appRepo,
+            buildRepo: buildRepo,
+            reviewDetailRepo: reviewDetailRepo,
+            localizationRepo: localizationRepo,
+            screenshotRepo: screenshotRepo,
+            pricingRepo: pricingRepo,
+            projectStorage: projectStorage
+        )
 
+        let status: String
+        if !result.readiness.isReadyToSubmit {
+            status = "blocked_not_ready"
+        } else if dryRun {
+            status = "dry_run"
+        } else if submit, !confirm {
+            status = "missing_confirm"
+        } else if submit, confirm {
+            status = "accepted_not_implemented"
+        } else {
+            status = "staged_not_implemented"
+        }
+
+        let formatter = OutputFormatter(format: globals.outputFormat, pretty: globals.pretty)
         return try formatter.format(ReleaseEnvelope(
             command: "release run",
             appId: app,
@@ -91,7 +206,9 @@ struct ReleaseRunCommand: AsyncParsableCommand {
             dryRun: dryRun,
             submit: submit,
             steps: ["ensureVersion", "applyMetadata", "attachBuild", "validateReadiness", "submitReview"],
-            status: status
+            status: status,
+            resolvedVersionId: result.version.id,
+            readinessStatus: result.readiness.isReadyToSubmit ? "ready" : "not_ready"
         ))
     }
 }
@@ -105,4 +222,6 @@ private struct ReleaseEnvelope: Encodable {
     let submit: Bool
     let steps: [String]
     let status: String
+    let resolvedVersionId: String?
+    let readinessStatus: String?
 }

@@ -92,10 +92,38 @@ struct P0SubmitReleaseCompatibilityTests {
     }
 
     @Test func `release stage dry-run emits planned steps`() async throws {
+        let versionRepo = MockVersionRepository()
+        let appRepo = MockAppRepository()
+        let buildRepo = MockBuildRepository()
+        let reviewDetailRepo = MockReviewDetailRepository()
+        let localizationRepo = MockVersionLocalizationRepository()
+        let screenshotRepo = MockScreenshotRepository()
+        let pricingRepo = MockPricingRepository()
+        let projectStorage = MockProjectConfigStorage()
+
+        given(versionRepo).listVersions(appId: .value("123")).willReturn([
+            AppStoreVersion(id: "v-1", appId: "123", versionString: "1.2.3", platform: .iOS, state: .prepareForSubmission, buildId: nil),
+        ])
+        given(appRepo).getApp(id: .value("123")).willReturn(App(id: "123", name: "App", bundleId: "com.example.app", primaryLocale: "en-US"))
+        given(reviewDetailRepo).getReviewDetail(versionId: .value("v-1")).willReturn(
+            AppStoreReviewDetail(id: "rd-1", versionId: "v-1", contactPhone: "123", contactEmail: "a@b.com", demoAccountRequired: false)
+        )
+        given(localizationRepo).listLocalizations(versionId: .value("v-1")).willReturn([])
+        given(pricingRepo).hasPricing(appId: .value("123")).willReturn(true)
+
         let cmd = try ReleaseStageCommand.parse([
             "--app", "123", "--version", "1.2.3", "--build", "456", "--dry-run", "--pretty",
         ])
-        let output = try cmd.execute()
+        let output = try await cmd.execute(
+            versionRepo: versionRepo,
+            appRepo: appRepo,
+            buildRepo: buildRepo,
+            reviewDetailRepo: reviewDetailRepo,
+            localizationRepo: localizationRepo,
+            screenshotRepo: screenshotRepo,
+            pricingRepo: pricingRepo,
+            projectStorage: projectStorage
+        )
 
         #expect(output.contains("\"command\" : \"release stage\""))
         #expect(output.contains("\"dryRun\" : true"))
