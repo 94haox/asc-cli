@@ -1,3 +1,4 @@
+import Foundation
 import Mockable
 import Testing
 @testable import ASCCommand
@@ -73,11 +74,11 @@ struct P0WorkflowCompatibilityTests {
         #expect(output.contains("\"command\" : \"workflow list\""))
     }
 
-    @Test func `workflow validate defaults to valid true for missing file`() async throws {
+    @Test func `workflow validate reports invalid when workflow file missing`() async throws {
         let cmd = try WorkflowValidateCommand.parse([])
-        let output = try cmd.execute(fileExists: { _ in false })
+        let output = try cmd.execute(loader: { _ in throw NSError(domain: "test", code: 1) })
 
-        #expect(output.contains("\"valid\":true"))
+        #expect(output.contains("\"valid\":false"))
     }
 }
 
