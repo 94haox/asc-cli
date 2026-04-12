@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Compatibility command trees for skill-driven workflows, including `submit`, `validate`, `release`, `publish`, `pricing`, `app-setup`, `workflow`, `xcode version`, `web`, `metadata`, and `migrate`
+- Compatibility aliases for `apps view`, `apps wall submit`, `versions view`, build group and beta notes flows, localization sync flows, screenshots automation flows, signing sync, notarization, and profile download
+- Structured compatibility payloads for release checks, pricing summaries, TestFlight config snapshots, and web privacy planning
+- Real App Store Connect-backed submission status/cancel/list support and app availability edit/create support for the compatibility command surface
+
+### Changed
+- Missing skill-surface commands now resolve to explicit compatibility handlers and real repository-backed or file-backed workflows instead of falling through to unknown-command errors
+- Notarization, signing sync, and profile download now use local-backed repositories with filesystem manifests and provisioning profile scanning instead of placeholder capability errors
+- TestFlight feedback and crash compatibility commands now read real beta feedback screenshot/crash submissions instead of emitting placeholder counts or capability errors
+- `asc submit status`, `asc submit cancel`, and `asc pricing availability edit` now call real repositories instead of placeholder handlers
+- `asc localizations upload`, `asc metadata *`, and `asc migrate *` now perform file-backed create/update/export/import/validate workflows instead of validation-only or placeholder responses
+- `asc release *`, `asc publish *`, `asc web apps availability *`, and `asc web review submissions-*` now execute real staging, upload, availability, and submission flows
+- README and feature docs now document the compatibility command surface expected by `app-store-connect-cli-skills`
+- README and feature docs now include command references and spec links for screenshot automation, TestFlight observability, workflow planning, and local notarization/signing/profile compatibility flows
+
 ---
 
 ## [0.1.66] - 2026-04-09

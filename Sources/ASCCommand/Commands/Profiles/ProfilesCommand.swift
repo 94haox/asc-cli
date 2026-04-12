@@ -8,6 +8,7 @@ struct ProfilesCommand: AsyncParsableCommand {
             ProfilesList.self,
             ProfilesCreate.self,
             ProfilesDelete.self,
+            ProfilesDownload.self,
         ]
     )
 }

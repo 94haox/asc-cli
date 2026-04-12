@@ -13,10 +13,13 @@ Create professional App Store marketing screenshots. Two modes:
 ## Quick Start
 
 ```bash
-# Gallery mode — all screenshots at once
-asc app-shots gallery create \
-  --app-name "BezelBlend" \
-  --screenshots screen-0.png screen-1.png screen-2.png screen-3.png
+# Gallery workflow — template + theme driven
+asc app-shots gallery-templates list --output table
+asc app-shots gallery-templates get --id neon-pop --preview > preview.html && open preview.html
+asc app-shots themes design --id luxury > design.json
+asc app-shots themes apply-design --design design.json \
+  --template top-hero --screenshot screen-0.png --headline "Feature 1" \
+  --preview html > s0.html
 
 # Single template mode — one screenshot
 asc app-shots templates apply \

@@ -8,6 +8,45 @@ public struct OpenAPISubmissionRepository: SubmissionRepository, @unchecked Send
         self.client = client
     }
 
+    public func listSubmissions(appId: String) async throws -> [Domain.ReviewSubmission] {
+        let request = APIEndpoint.v1.reviewSubmissions.get(parameters: .init(
+            filterApp: [appId],
+            fieldsReviewSubmissions: [.platform, .submittedDate, .state, .app, .appStoreVersionForReview],
+            include: [.app, .appStoreVersionForReview]
+        ))
+        let response = try await client.request(request)
+        return try response.data.map { try mapSubmission($0, appId: appId) }
+    }
+
+    public func getSubmission(id: String) async throws -> Domain.ReviewSubmission {
+        let request = APIEndpoint.v1.reviewSubmissions.id(id).get(parameters: .init(
+            fieldsReviewSubmissions: [.platform, .submittedDate, .state, .app, .appStoreVersionForReview],
+            include: [.app, .appStoreVersionForReview]
+        ))
+        let response = try await client.request(request)
+        return try mapSubmission(response.data, appId: response.data.relationships?.app?.data?.id)
+    }
+
+    public func cancelSubmission(id: String) async throws -> Domain.ReviewSubmission {
+        let existing = try await getSubmission(id: id)
+        let request = APIEndpoint.v1.reviewSubmissions.id(id).patch(
+            ReviewSubmissionUpdateRequest(
+                data: .init(
+                    type: .reviewSubmissions,
+                    id: id,
+                    attributes: .init(isCanceled: true)
+                )
+            )
+        )
+        let response = try await client.request(request)
+        return try mapSubmission(
+            response.data,
+            appId: existing.appId,
+            platform: existing.platform,
+            appStoreVersionId: existing.appStoreVersionId
+        )
+    }
+
     public func submitVersion(versionId: String) async throws -> Domain.ReviewSubmission {
         // Step 1: Fetch the version to extract appId and platform
         let versionReq = APIEndpoint.v1.appStoreVersions.id(versionId).get(
@@ -31,7 +70,7 @@ public struct OpenAPISubmissionRepository: SubmissionRepository, @unchecked Send
         ))
         let listResp = try await client.request(listReq)
         if let existing = listResp.data.first {
-            return try await patchSubmitted(id: existing.id, appId: appId, platform: platform)
+            return try await patchSubmitted(id: existing.id, appId: appId, platform: platform, versionId: versionId)
         }
 
         // Step 3: Create new review submission
@@ -64,13 +103,14 @@ public struct OpenAPISubmissionRepository: SubmissionRepository, @unchecked Send
         _ = try await client.request(itemReq)
 
         // Step 5: Submit for review
-        return try await patchSubmitted(id: submissionId, appId: appId, platform: platform)
+        return try await patchSubmitted(id: submissionId, appId: appId, platform: platform, versionId: versionId)
     }
 
     private func patchSubmitted(
         id: String,
         appId: String,
-        platform: Domain.AppStorePlatform
+        platform: Domain.AppStorePlatform,
+        versionId: String
     ) async throws -> Domain.ReviewSubmission {
         let submitReq = APIEndpoint.v1.reviewSubmissions.id(id).patch(
             ReviewSubmissionUpdateRequest(
@@ -82,21 +122,35 @@ public struct OpenAPISubmissionRepository: SubmissionRepository, @unchecked Send
             )
         )
         let finalResp = try await client.request(submitReq)
-        return mapSubmission(finalResp.data, appId: appId, platform: platform)
+        return try mapSubmission(finalResp.data, appId: appId, platform: platform, appStoreVersionId: versionId)
     }
 
     private func mapSubmission(
         _ sdkSubmission: AppStoreConnect_Swift_SDK.ReviewSubmission,
-        appId: String,
-        platform: Domain.AppStorePlatform
-    ) -> Domain.ReviewSubmission {
+        appId: String? = nil,
+        platform: Domain.AppStorePlatform? = nil,
+        appStoreVersionId: String? = nil
+    ) throws -> Domain.ReviewSubmission {
+        let resolvedPlatform: Domain.AppStorePlatform
+        if let platform {
+            resolvedPlatform = platform
+        } else if let sdkPlatform = sdkSubmission.attributes?.platform,
+                  let mappedPlatform = Domain.AppStorePlatform(rawValue: sdkPlatform.rawValue) {
+            resolvedPlatform = mappedPlatform
+        } else {
+            throw APIError.unknown("Failed to extract platform for review submission \(sdkSubmission.id)")
+        }
         let state = sdkSubmission.attributes?.state.flatMap {
             Domain.ReviewSubmissionState(rawValue: $0.rawValue)
         } ?? .readyForReview
+        let resolvedAppId = appId ?? sdkSubmission.relationships?.app?.data?.id ?? ""
+        let resolvedVersionId = appStoreVersionId
+            ?? sdkSubmission.relationships?.appStoreVersionForReview?.data?.id
         return Domain.ReviewSubmission(
             id: sdkSubmission.id,
-            appId: appId,
-            platform: platform,
+            appId: resolvedAppId,
+            appStoreVersionId: resolvedVersionId,
+            platform: resolvedPlatform,
             state: state,
             submittedDate: sdkSubmission.attributes?.submittedDate
         )

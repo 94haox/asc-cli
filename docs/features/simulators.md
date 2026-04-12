@@ -2,7 +2,7 @@
 
 Manage local iOS simulators from the CLI — list, boot, and shutdown.
 
-Streaming and interaction features are available via the [ASC Pro plugin](plugin-ui-architecture.md).
+Streaming and interaction features are available via the [ASC Pro plugin](plugin-ui-architecture.md); they are not part of the core CLI in this repository.
 
 ## CLI Usage
 
@@ -53,7 +53,6 @@ CF65871E-B600-40CB-8B18-B6B7101D38E1  iPhone 16 Pro Max   Booted    iOS 18.2
       "isBooted" : true,
       "affordances" : {
         "shutdown" : "asc simulators shutdown --udid CF65871E-...",
-        "stream" : "asc simulators stream --udid CF65871E-...",
         "listSimulators" : "asc simulators list"
       }
     }
@@ -61,7 +60,7 @@ CF65871E-B600-40CB-8B18-B6B7101D38E1  iPhone 16 Pro Max   Booted    iOS 18.2
 }
 ```
 
-> Note: The `stream` affordance only appears when the ASC Pro plugin is installed.
+> Note: The `stream` affordance is provided by the ASC Pro plugin and does not ship as a core `asc` command here.
 
 ---
 

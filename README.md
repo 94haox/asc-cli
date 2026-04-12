@@ -28,8 +28,9 @@ asc init --app-id <id> # pin it — skip --app-id on every future command
 
 | Category | What you can do |
 | --- | --- |
-| **Apps & Versions** | List apps, create versions, link builds, submit for App Store review |
+| **Apps & Versions** | List apps, view app details, create versions, view version details, link builds, submit for App Store review |
 | **Builds** | Archive Xcode projects, export IPA/PKG, upload to App Store Connect, distribute to TestFlight, update beta notes |
+| **Compatibility Workflows** | Skill-compatible command surfaces for release/publish orchestration, workflow planning, web privacy/review, file-backed metadata and migrate flows, TestFlight feedback/config, screenshot automation, and local signing/notarization/profile helpers |
 | **Metadata** | Update What's New, description, and keywords per locale |
 | **App Info** | Set per-locale name, subtitle, privacy policy; manage categories and age rating |
 | **Screenshots** | Create screenshot sets and upload images |
@@ -127,9 +128,13 @@ asc init --app-id <id>       # pin directly — no API call needed
 
 ### Apps & Versions
 
+See `docs/features/apps.md` and `docs/features/versions.md` for the app and version detail workflows.
+
 ```bash
 asc apps list
+asc apps view --app-id <id>
 asc versions list --app-id <id>
+asc versions view --version-id <id>
 asc versions create --app-id <id> --version <v> --platform ios
 asc versions set-build --version-id <id> --build-id <id>
 asc versions check-readiness --version-id <id>
@@ -174,6 +179,53 @@ asc xcode-cloud workflows list --product-id <id>
 asc xcode-cloud builds list --workflow-id <id>
 asc xcode-cloud builds get --build-run-id <id>
 asc xcode-cloud builds start --workflow-id <id> [--clean]
+```
+
+### Compatibility Workflows
+
+```bash
+asc submit preflight --app <id> --version 1.2.3 --platform ios
+asc submit create --app <id> --version 1.2.3 --build <build-id> --confirm
+asc submit status --version-id <id>
+asc submit cancel --id <id> --confirm
+asc release run --app <id> --version 1.2.3 --validate --submit --publish --dry-run
+asc validate iap --app <id>
+asc validate subscriptions --app <id>
+asc pricing availability view --app <id>
+asc pricing availability edit --app <id> --territory USA --available true
+asc app-setup info --app <id>
+asc app-setup categories --app <id>
+asc app-setup availability --app <id>
+asc workflow list --file .asc/workflow.json
+asc workflow validate --file .asc/workflow.json
+asc workflow run release version:1.2.3 artifact:ipa --dry-run
+asc xcode version list --product-id <product-id>
+asc testflight feedback list --app-id <id>
+asc testflight crashes list --app-id <id>
+asc testflight config export --app-id <id> --output ./testflight.json --include-testers
+asc web auth capabilities --pretty
+asc web privacy pull --app-id <id> --out ./privacy.json
+asc metadata pull --app <id> --version 1.2.3 --dir ./metadata
+asc metadata push --app <id> --version 1.2.3 --dir ./metadata
+asc metadata validate --dir ./metadata
+asc migrate export --app <id> --version 1.2.3 --output-dir ./fastlane/metadata
+asc migrate import --app <id> --version 1.2.3 --fastlane-dir ./fastlane/metadata
+asc migrate validate --fastlane-dir ./fastlane/metadata
+asc screenshots list-frame-devices
+asc screenshots sizes --platform ios
+asc screenshots capture --bundle-id com.example.app --plan ./screenshots-plan.json --output-dir ./captured
+asc screenshots frame --input ./captured --output-dir ./framed --device iphone-16-pro-max --orientation portrait
+asc screenshots review-generate --framed-dir ./framed --output-dir ./review --title "1.2.3 Review"
+asc screenshots review-open --output-dir ./review
+asc screenshots review-approve --output-dir ./review --all-ready
+asc screenshots run --plan ./screenshots-plan.json --capture-output-dir ./captured --framed-output-dir ./framed --review-output-dir ./review --output-dir ./upload --dry-run
+asc notarization submit --file ./MyApp.pkg --wait
+asc notarization list --limit 10
+asc notarization status --id <submission-id>
+asc notarization log --id <submission-id>
+asc signing sync push --pretty
+asc signing sync pull --confirm
+asc profiles download --id <profile-id> --output ./profiles/MyProfile.mobileprovision
 ```
 
 ### Customer Reviews
@@ -287,10 +339,11 @@ asc app-shots templates apply --id top-hero \
 asc app-shots gallery-templates list --output table
 asc app-shots gallery-templates get --id neon-pop --preview > gallery.html && open gallery.html
 
-# --- Gallery mode (all screenshots at once) ---
-asc app-shots gallery create \
-  --app-name "MyApp" \
-  --screenshots screen-0.png screen-1.png screen-2.png
+# --- Gallery workflow (template + theme driven) ---
+asc app-shots themes design --id luxury > design.json
+asc app-shots themes apply-design --design design.json \
+  --template top-hero --screenshot screen-0.png --headline "Feature 1" \
+  --preview html > s0.html
 
 # --- Themes (plugin-provided, AI-powered styling) ---
 asc app-shots themes list                                 # browse themes
@@ -519,10 +572,19 @@ Detailed documentation for each feature:
 
 - [Auth](docs/features/asc-auth.md) — multi-account credential management; login, list, use, logout, check
 - [Version Localizations](docs/features/version-localizations.md) — What's New, description, keywords
-- [Screenshots](docs/features/screenshots.md) — screenshot sets and image uploads
+- [Screenshots](docs/features/screenshots.md) — screenshot sets, image uploads, and local automation planners (`capture/frame/review/run`)
 - [App Previews](docs/features/app-previews.md) — preview sets and video uploads
 - [App Info](docs/features/app-infos.md) — name, subtitle, privacy policy, categories, age rating
 - [TestFlight](docs/features/testflight.md) — beta groups, tester management, CSV import/export
+- [Compatibility Commands](docs/features/compatibility-commands.md) — skill-compatible aliases, release wrappers, workflow planners, metadata/migrate, screenshots automation, and local signing/notarization/profile flows
+- [Compatibility Specs: Aliases & Query Commands](docs/specs/spec-compatibility-aliases-and-query-commands.md) — `apps view`, `versions view`, `apps wall submit`, build aliases, localization sync
+- [Compatibility Specs: Release & Publish](docs/specs/spec-release-submission-validation-publish.md) — `submit`, `validate`, `release`, `publish`
+- [Compatibility Specs: Pricing, Workflow, Xcode](docs/specs/spec-pricing-availability-workflow.md) — `pricing`, `app-setup`, `workflow`, `xcode version`
+- [Compatibility Specs: TestFlight Observability](docs/specs/spec-testflight-obs-and-config.md) — feedback, crashes, config export/import
+- [Compatibility Specs: Web Privacy & Review](docs/specs/spec-web-review-privacy.md) — `web auth`, `web privacy`, `web review`
+- [Compatibility Specs: Metadata & Migrate](docs/specs/spec-metadata-localization-migration.md) — canonical workspace layout, validation, import/export
+- [Compatibility Specs: Notarization & Signing](docs/specs/spec-notarization-workflow-signing.md) — local notarization queue, signing sync, profile download semantics
+- [Compatibility Specs: Screenshots Automation](docs/specs/spec-screenshots-automation.md) — `screenshots capture/frame/review/run` planner-oriented helpers
 - [Beta Review](docs/features/beta-review.md) — submit builds for beta app review, manage review contact details
 - [Xcode Cloud](docs/features/xcode-cloud.md) — products, workflows, build runs, start builds
 - [Builds Archive](docs/features/builds-archive.md) — archive Xcode projects, export IPA/PKG, optional upload chaining

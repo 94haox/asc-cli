@@ -6,7 +6,14 @@ struct TestFlightCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "testflight",
         abstract: "Manage TestFlight beta testing",
-        subcommands: [BetaGroupsCommand.self, BetaTestersCommand.self]
+        subcommands: [
+            BetaGroupsCommand.self,
+            BetaTestersCommand.self,
+            TestFlightPreReleaseCommand.self,
+            TestFlightFeedbackCommand.self,
+            TestFlightCrashesCommand.self,
+            TestFlightConfigCommand.self,
+        ]
     )
 }
 

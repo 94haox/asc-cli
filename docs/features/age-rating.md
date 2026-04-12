@@ -408,23 +408,6 @@ swift test --filter 'AgeRating'
 
 ### Adding territory-specific age ratings
 
-The App Store Connect API also exposes per-territory age ratings via `/v1/appInfos/{id}/territoryAgeRatings`. This returns the computed store-displayed ratings (e.g. "12+" in France) rather than the editable declaration fields.
+Not implemented in asc-cli yet. The App Store Connect API also exposes per-territory age ratings via `/v1/appInfos/{id}/territoryAgeRatings`. This returns the computed store-displayed ratings (e.g. "12+" in France) rather than the editable declaration fields.
 
-```swift
-// 1. Domain model
-public struct TerritoryAgeRating: Sendable, Equatable, Identifiable, Codable {
-    public let id: String
-    public let appInfoId: String
-    public let territory: String
-    public let appStoreAgeRating: String?
-}
-
-// 2. Repository method
-func listTerritoryAgeRatings(appInfoId: String) async throws -> [TerritoryAgeRating]
-
-// 3. SDK call
-APIEndpoint.v1.appInfos.id(appInfoId).territoryAgeRatings.get()
-
-// 4. New subcommand
-asc age-rating territories --app-info-id <id>
-```
+There is no `asc age-rating territories` subcommand in this repository.

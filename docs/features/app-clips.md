@@ -453,10 +453,14 @@ swift test --filter 'AppClip'
 
 **Natural next steps:**
 
-- `asc app-clip-experiences update --experience-id <id> --action VIEW` — update experience action (`PATCH /v1/appClipDefaultExperiences/{id}`)
-- `asc app-clip-experience-localizations update --localization-id <id> --subtitle "..."` — update subtitle (`PATCH /v1/appClipDefaultExperienceLocalizations/{id}`)
-- `asc app-clip-experiences get --experience-id <id>` — get a single experience
-- Advanced App Clip Experiences — `asc app-clip-advanced-experiences` via `/v1/appClipAdvancedExperiences`
+The App Store Connect API exposes a few additional App Clip endpoints, but asc-cli does not implement subcommands for them yet:
+
+- App Clip experience updates are available via `PATCH /v1/appClipDefaultExperiences/{id}`.
+- App Clip localization updates are available via `PATCH /v1/appClipDefaultExperienceLocalizations/{id}`.
+- Fetching a single default experience is available via `GET /v1/appClipDefaultExperiences/{id}`.
+- Advanced App Clip Experiences are exposed at `/v1/appClipAdvancedExperiences`.
+
+These are API notes only; there is no matching `asc` command in this repository yet.
 
 ```swift
 // Stub for update experience

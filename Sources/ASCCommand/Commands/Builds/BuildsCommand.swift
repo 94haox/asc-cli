@@ -6,13 +6,18 @@ struct BuildsCommand: AsyncParsableCommand {
         abstract: "Manage builds",
         subcommands: [
             BuildsList.self,
+            BuildsInfo.self,
             BuildsNextNumber.self,
+            BuildsNextBuildNumber.self,
             BuildsUpload.self,
             BuildsArchive.self,
             BuildsUploadsCommand.self,
             BuildsAddBetaGroup.self,
             BuildsRemoveBetaGroup.self,
+            BuildsAddGroups.self,
+            BuildsRemoveGroups.self,
             BuildsUpdateBetaNotes.self,
+            BuildsTestNotesCommand.self,
         ]
     )
 }

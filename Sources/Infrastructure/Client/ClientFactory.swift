@@ -26,6 +26,11 @@ public struct ClientFactory: Sendable {
         return SDKTestFlightRepository(client: provider)
     }
 
+    public func makeTestFlightFeedbackRepository(authProvider: any AuthProvider) throws -> any TestFlightFeedbackRepository {
+        let provider = try makeProvider(authProvider: authProvider)
+        return SDKTestFlightFeedbackRepository(client: provider)
+    }
+
     public func makeVersionLocalizationRepository(authProvider: any AuthProvider) throws -> any VersionLocalizationRepository {
         let provider = try makeProvider(authProvider: authProvider)
         return SDKLocalizationRepository(client: provider)

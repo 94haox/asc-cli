@@ -173,11 +173,19 @@ struct MockRepositoryFactory {
     static func makeReviewSubmission(
         id: String = "sub-1",
         appId: String = "app-1",
+        appStoreVersionId: String? = nil,
         platform: AppStorePlatform = .iOS,
         state: ReviewSubmissionState = .waitingForReview,
         submittedDate: Date? = nil
     ) -> ReviewSubmission {
-        ReviewSubmission(id: id, appId: appId, platform: platform, state: state, submittedDate: submittedDate)
+        ReviewSubmission(
+            id: id,
+            appId: appId,
+            appStoreVersionId: appStoreVersionId,
+            platform: platform,
+            state: state,
+            submittedDate: submittedDate
+        )
     }
 
     static func makeAppInfo(

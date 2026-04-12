@@ -1123,6 +1123,5 @@ Same structure as subscription counterparts with `offerCodeId` as parent.
 Natural next steps:
 
 **Subscription Promotional Offers** — `POST /v1/subscriptionPromotionalOffers`:
-```bash
-asc subscription-promotional-offers create --subscription-id <id> --name "Winback" --duration ONE_MONTH --mode PAY_AS_YOU_GO
-```
+
+Not implemented in asc-cli yet. There is no `asc subscription-promotional-offers create` command in this repository.

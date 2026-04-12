@@ -104,4 +104,105 @@ struct SDKAppAvailabilityRepositoryTests {
 
         #expect(result.territories.isEmpty)
     }
+
+    @Test func `createAvailability posts app availability with territory ids`() async throws {
+        let stub = StubAPIClient()
+        stub.willReturn(AppAvailabilityV2Response(
+            data: AppAvailabilityV2(
+                type: .appAvailabilities,
+                id: "avail-4",
+                attributes: .init(isAvailableInNewTerritories: true),
+                relationships: .init(
+                    territoryAvailabilities: .init(
+                        data: [
+                            .init(type: .territoryAvailabilities, id: "USA"),
+                            .init(type: .territoryAvailabilities, id: "JPN")
+                        ]
+                    )
+                )
+            ),
+            included: [
+                TerritoryAvailability(
+                    type: .territoryAvailabilities,
+                    id: "USA",
+                    attributes: .init(isAvailable: true, contentStatuses: [.available]),
+                    relationships: .init(territory: .init(data: .init(type: .territories, id: "USA")))
+                ),
+                TerritoryAvailability(
+                    type: .territoryAvailabilities,
+                    id: "JPN",
+                    attributes: .init(isAvailable: true, contentStatuses: [.available]),
+                    relationships: .init(territory: .init(data: .init(type: .territories, id: "JPN")))
+                ),
+            ],
+            links: .init(this: "")
+        ))
+
+        let repo = SDKAppAvailabilityRepository(client: stub)
+        let result = try await repo.createAvailability(
+            appId: "app-4",
+            isAvailableInNewTerritories: true,
+            territoryIds: ["USA", "JPN"]
+        )
+
+        #expect(result.id == "avail-4")
+        #expect(result.appId == "app-4")
+        #expect(result.isAvailableInNewTerritories == true)
+        #expect(result.territories.count == 2)
+        #expect(result.territories[0].territoryId == "USA")
+    }
+
+    @Test func `updateAvailability patches existing territory availability`() async throws {
+        let stub = SequencedStubAPIClient()
+        stub.enqueue(AppAvailabilityV2Response(
+            data: AppAvailabilityV2(
+                type: .appAvailabilities,
+                id: "avail-5",
+                attributes: .init(isAvailableInNewTerritories: false),
+                relationships: .init(
+                    territoryAvailabilities: .init(
+                        data: [
+                            .init(type: .territoryAvailabilities, id: "ta-1"),
+                            .init(type: .territoryAvailabilities, id: "ta-2")
+                        ]
+                    )
+                )
+            ),
+            included: [
+                TerritoryAvailability(
+                    type: .territoryAvailabilities,
+                    id: "ta-1",
+                    attributes: .init(isAvailable: true, contentStatuses: [.available]),
+                    relationships: .init(territory: .init(data: .init(type: .territories, id: "USA")))
+                ),
+                TerritoryAvailability(
+                    type: .territoryAvailabilities,
+                    id: "ta-2",
+                    attributes: .init(isAvailable: true, contentStatuses: [.available]),
+                    relationships: .init(territory: .init(data: .init(type: .territories, id: "JPN")))
+                ),
+            ],
+            links: .init(this: "")
+        ))
+        stub.enqueue(TerritoryAvailabilityResponse(
+            data: TerritoryAvailability(
+                type: .territoryAvailabilities,
+                id: "ta-1",
+                attributes: .init(isAvailable: false, contentStatuses: [.cannotSellRestrictedRating]),
+                relationships: .init(territory: .init(data: .init(type: .territories, id: "USA")))
+            ),
+            links: .init(this: "")
+        ))
+
+        let repo = SDKAppAvailabilityRepository(client: stub)
+        let result = try await repo.updateAvailability(
+            appId: "app-5",
+            territoryIds: ["USA"],
+            isAvailable: false
+        )
+
+        #expect(result.id == "avail-5")
+        #expect(result.territories.count == 2)
+        #expect(result.territories.first(where: { $0.territoryId == "USA" })?.isAvailable == false)
+    }
 }

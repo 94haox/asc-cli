@@ -26,6 +26,12 @@ struct ClientProvider {
         return try factory.makeTestFlightRepository(authProvider: authProvider)
     }
 
+    static func makeTestFlightFeedbackRepository() throws -> any TestFlightFeedbackRepository {
+        let authProvider = CompositeAuthProvider()
+        let factory = ClientFactory()
+        return try factory.makeTestFlightFeedbackRepository(authProvider: authProvider)
+    }
+
     static func makeVersionLocalizationRepository() throws -> any VersionLocalizationRepository {
         let authProvider = CompositeAuthProvider()
         let factory = ClientFactory()
@@ -78,6 +84,18 @@ struct ClientProvider {
         let authProvider = CompositeAuthProvider()
         let factory = ClientFactory()
         return try factory.makeProfileRepository(authProvider: authProvider)
+    }
+
+    static func makeNotarizationRepository() throws -> any NotarizationRepository {
+        return LocalNotarizationRepository()
+    }
+
+    static func makeSigningSyncRepository() throws -> any SigningSyncRepository {
+        return LocalSigningSyncRepository()
+    }
+
+    static func makeProfileDownloadRepository() throws -> any ProfileDownloadRepository {
+        return LocalProfileDownloadRepository()
     }
 
     static func makeBuildUploadRepository() throws -> any BuildUploadRepository {

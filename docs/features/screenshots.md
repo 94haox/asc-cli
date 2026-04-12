@@ -2,6 +2,8 @@
 
 Manage App Store screenshot sets and individual screenshots for an app version localization via the App Store Connect API.
 
+This page also covers the planner-oriented local automation helpers added under `asc screenshots` for capture, framing, review bundles, and end-to-end run planning. Those helpers operate on local files and screenshots plans rather than talking directly to the App Store Connect API.
+
 ## CLI Usage
 
 ### List Screenshot Sets
@@ -133,6 +135,34 @@ asc screenshots upload --set-id <SET_ID> --file <PATH>
 ```bash
 asc screenshots upload --set-id set-aaa --file ./screens/iphone_hero.png
 ```
+
+---
+
+### Automation Compatibility Helpers
+
+These commands complement the API-backed upload/list flows with local planning helpers for screenshot generation pipelines.
+
+```bash
+asc screenshots list-frame-devices
+asc screenshots sizes --platform ios
+asc screenshots capture --bundle-id com.example.app --plan ./screenshots-plan.json --output-dir ./captured
+asc screenshots frame --input ./captured --output-dir ./framed --device iphone-16-pro-max --orientation portrait
+asc screenshots review-generate --framed-dir ./framed --output-dir ./review --title "1.2.3 Review"
+asc screenshots review-open --output-dir ./review
+asc screenshots review-approve --output-dir ./review --all-ready
+asc screenshots run --plan ./screenshots-plan.json --capture-output-dir ./captured --framed-output-dir ./framed --review-output-dir ./review --output-dir ./upload --dry-run
+```
+
+Behavior summary:
+
+- `list-frame-devices` lists the built-in framing presets.
+- `sizes` returns supported size presets for `ios`, `macos`, `tvos`, or `watchos`.
+- `capture` validates a screenshots plan file and returns a planned capture summary for the requested bundle ID.
+- `frame` copies source images into the requested output directory and records the target device/orientation.
+- `review-generate`, `review-open`, and `review-approve` manage a local review bundle with `manifest.json` and `index.html`.
+- `run` emits a four-step local plan (`capture`, `frame`, `review-generate`, `upload`) and marks `--dry-run` output explicitly.
+
+For the detailed contract and accepted JSON plan fields, see `docs/specs/spec-screenshots-automation.md`.
 
 ---
 

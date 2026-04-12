@@ -1,10 +1,103 @@
 @preconcurrency import AppStoreConnect_Swift_SDK
+import Foundation
 import Testing
 @testable import Infrastructure
 @testable import Domain
 
 @Suite
 struct SDKSubmissionRepositoryTests {
+
+    @Test func `listSubmissions injects appId and versionId from relationships`() async throws {
+        let stub = SequencedStubAPIClient()
+
+        stub.enqueue(ReviewSubmissionsResponse(
+            data: [
+                ReviewSubmission(
+                    type: .reviewSubmissions,
+                    id: "sub-1",
+                    attributes: .init(platform: .ios, submittedDate: Date(timeIntervalSince1970: 10), state: .waitingForReview),
+                    relationships: .init(
+                        app: .init(data: .init(type: .apps, id: "app-1")),
+                        appStoreVersionForReview: .init(data: .init(type: .appStoreVersions, id: "v-1"))
+                    )
+                )
+            ],
+            links: .init(this: ""),
+            meta: nil
+        ))
+
+        let repo = OpenAPISubmissionRepository(client: stub)
+        let result = try await repo.listSubmissions(appId: "app-1")
+
+        #expect(result.count == 1)
+        #expect(result[0].appId == "app-1")
+        #expect(result[0].appStoreVersionId == "v-1")
+        #expect(result[0].platform == .iOS)
+        #expect(result[0].state == .waitingForReview)
+    }
+
+    @Test func `getSubmission maps appId and versionId from response`() async throws {
+        let stub = SequencedStubAPIClient()
+
+        stub.enqueue(ReviewSubmissionResponse(
+            data: ReviewSubmission(
+                type: .reviewSubmissions,
+                id: "sub-2",
+                attributes: .init(platform: .macOs, submittedDate: Date(timeIntervalSince1970: 20), state: .inReview),
+                relationships: .init(
+                    app: .init(data: .init(type: .apps, id: "app-2")),
+                    appStoreVersionForReview: .init(data: .init(type: .appStoreVersions, id: "v-2"))
+                )
+            ),
+            links: .init(this: "")
+        ))
+
+        let repo = OpenAPISubmissionRepository(client: stub)
+        let result = try await repo.getSubmission(id: "sub-2")
+
+        #expect(result.id == "sub-2")
+        #expect(result.appId == "app-2")
+        #expect(result.appStoreVersionId == "v-2")
+        #expect(result.platform == .macOS)
+        #expect(result.state == .inReview)
+    }
+
+    @Test func `cancelSubmission marks submission canceled`() async throws {
+        let stub = SequencedStubAPIClient()
+
+        stub.enqueue(ReviewSubmissionResponse(
+            data: ReviewSubmission(
+                type: .reviewSubmissions,
+                id: "sub-3",
+                attributes: .init(platform: .ios, submittedDate: Date(timeIntervalSince1970: 30), state: .waitingForReview),
+                relationships: .init(
+                    app: .init(data: .init(type: .apps, id: "app-3")),
+                    appStoreVersionForReview: .init(data: .init(type: .appStoreVersions, id: "v-3"))
+                )
+            ),
+            links: .init(this: "")
+        ))
+        stub.enqueue(ReviewSubmissionResponse(
+            data: ReviewSubmission(
+                type: .reviewSubmissions,
+                id: "sub-3",
+                attributes: .init(platform: .ios, submittedDate: Date(timeIntervalSince1970: 30), state: .canceling),
+                relationships: .init(
+                    app: .init(data: .init(type: .apps, id: "app-3")),
+                    appStoreVersionForReview: .init(data: .init(type: .appStoreVersions, id: "v-3"))
+                )
+            ),
+            links: .init(this: "")
+        ))
+
+        let repo = OpenAPISubmissionRepository(client: stub)
+        let result = try await repo.cancelSubmission(id: "sub-3")
+
+        #expect(result.id == "sub-3")
+        #expect(result.appId == "app-3")
+        #expect(result.appStoreVersionId == "v-3")
+        #expect(result.state == .canceling)
+    }
 
     @Test func `submitVersion injects appId from version relationship`() async throws {
         let stub = SequencedStubAPIClient()
@@ -49,7 +142,7 @@ struct SDKSubmissionRepositoryTests {
             data: ReviewSubmission(
                 type: .reviewSubmissions,
                 id: "sub-99",
-                attributes: .init(state: .waitingForReview)
+                attributes: .init(platform: .ios, state: .waitingForReview)
             ),
             links: .init(this: "")
         ))
@@ -82,7 +175,7 @@ struct SDKSubmissionRepositoryTests {
             data: ReviewSubmission(
                 type: .reviewSubmissions,
                 id: "sub-77",
-                attributes: .init(state: .inReview)
+                attributes: .init(platform: .macOs, state: .inReview)
             ),
             links: .init(this: "")
         ))
@@ -138,7 +231,7 @@ struct SDKSubmissionRepositoryTests {
             data: ReviewSubmission(
                 type: .reviewSubmissions,
                 id: "sub-existing",
-                attributes: .init(state: .waitingForReview)
+                attributes: .init(platform: .ios, state: .waitingForReview)
             ),
             links: .init(this: "")
         ))
