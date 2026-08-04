@@ -151,41 +151,7 @@ struct SimulatorTests {
         #expect(sim.registryProperties["isBooted"] == "false")
     }
 
-    @Test(.serialized) func `booted simulator affordances include plugin stream when registered`() {
-        AffordanceRegistry.reset()
-        AffordanceRegistry.register(Simulator.self) { id, props in
-            guard props["isBooted"] == "true" else { return [] }
-            return [Affordance(key: "stream", command: "simulators", action: "stream", params: ["udid": id])]
-        }
-        let sim = MockRepositoryFactory.makeSimulator(id: "SIM-1", state: .booted)
-        // Plugin affordance should be merged into the model's own affordances
-        #expect(sim.affordances["stream"] == "asc simulators stream --udid SIM-1")
-        // Model's own affordances still present
-        #expect(sim.affordances["shutdown"] == "asc simulators shutdown --udid SIM-1")
-        AffordanceRegistry.reset()
-    }
-
-    @Test(.serialized) func `shutdown simulator does not get stream affordance from plugin`() {
-        AffordanceRegistry.reset()
-        AffordanceRegistry.register(Simulator.self) { id, props in
-            guard props["isBooted"] == "true" else { return [] }
-            return [Affordance(key: "stream", command: "simulators", action: "stream", params: ["udid": id])]
-        }
-        let sim = MockRepositoryFactory.makeSimulator(id: "SIM-2", state: .shutdown)
-        #expect(sim.affordances["stream"] == nil)
-        AffordanceRegistry.reset()
-    }
-
-    @Test(.serialized) func `booted simulator apiLinks include plugin stream when registered`() {
-        AffordanceRegistry.reset()
-        AffordanceRegistry.register(Simulator.self) { id, props in
-            guard props["isBooted"] == "true" else { return [] }
-            return [Affordance(key: "stream", command: "simulators", action: "stream", params: ["udid": id])]
-        }
-        let sim = MockRepositoryFactory.makeSimulator(id: "SIM-1", state: .booted)
-        // Plugin affordance should appear in REST links too
-        #expect(sim.apiLinks["stream"] != nil)
-        #expect(sim.apiLinks["stream"]?.method == "POST")
-        AffordanceRegistry.reset()
-    }
+    // Tests that register plugin providers for Simulator live in
+    // AffordanceRegistryTests — they need that suite's serialized scope because
+    // AffordanceRegistry is process-global. See the note there before adding more.
 }

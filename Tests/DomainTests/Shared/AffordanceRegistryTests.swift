@@ -66,4 +66,45 @@ struct AffordanceRegistryTests {
         #expect(link.method == "POST")
         #expect(link.href.contains("simulators"))
     }
+
+    // MARK: - Plugin affordances merged into a real domain model
+    //
+    // These live here, not in SimulatorTests, on purpose. AffordanceRegistry is
+    // process-global mutable state, and `.serialized` only orders tests *within*
+    // a suite — separate suites still run concurrently. Any test that registers a
+    // provider must therefore share this one serialized suite, or `init()`'s reset
+    // will wipe its registration mid-test. Register from anywhere else and you
+    // reintroduce a flake that only shows up under parallel scheduling.
+
+    @Test func `booted simulator affordances include plugin stream when registered`() {
+        AffordanceRegistry.register(Simulator.self) { id, props in
+            guard props["isBooted"] == "true" else { return [] }
+            return [Affordance(key: "stream", command: "simulators", action: "stream", params: ["udid": id])]
+        }
+        let sim = MockRepositoryFactory.makeSimulator(id: "SIM-1", state: .booted)
+        // Plugin affordance should be merged into the model's own affordances
+        #expect(sim.affordances["stream"] == "asc simulators stream --udid SIM-1")
+        // Model's own affordances still present
+        #expect(sim.affordances["shutdown"] == "asc simulators shutdown --udid SIM-1")
+    }
+
+    @Test func `shutdown simulator does not get stream affordance from plugin`() {
+        AffordanceRegistry.register(Simulator.self) { id, props in
+            guard props["isBooted"] == "true" else { return [] }
+            return [Affordance(key: "stream", command: "simulators", action: "stream", params: ["udid": id])]
+        }
+        let sim = MockRepositoryFactory.makeSimulator(id: "SIM-2", state: .shutdown)
+        #expect(sim.affordances["stream"] == nil)
+    }
+
+    @Test func `booted simulator apiLinks include plugin stream when registered`() {
+        AffordanceRegistry.register(Simulator.self) { id, props in
+            guard props["isBooted"] == "true" else { return [] }
+            return [Affordance(key: "stream", command: "simulators", action: "stream", params: ["udid": id])]
+        }
+        let sim = MockRepositoryFactory.makeSimulator(id: "SIM-1", state: .booted)
+        // Plugin affordance should appear in REST links too
+        #expect(sim.apiLinks["stream"] != nil)
+        #expect(sim.apiLinks["stream"]?.method == "POST")
+    }
 }
